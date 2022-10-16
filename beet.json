@@ -1,0 +1,21 @@
+{
+    "name": "mc-gold",
+    "author": "PuckiSilver",
+    "description": "Library to insert into loot tables",
+    "version": "v0.1.0",
+    "output": "build",
+    "require": ["bolt"],
+
+    "data_pack": {
+        "load": ["src"],
+        "name": "mc-gold",
+        "zipped": false
+    },
+
+    "pipeline": ["mecha"],
+    "meta": {
+        "bolt": {
+            "entrypoint": "gold:main"
+        }
+    }
+}
