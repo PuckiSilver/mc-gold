@@ -1,0 +1,10 @@
+{ "values": [
+    {
+        "id": "minecraft:dispenser",
+        "required": false
+    },
+    {
+        "id": "minecraft:dropper",
+        "required": false
+    }
+]}

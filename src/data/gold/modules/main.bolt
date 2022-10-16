@@ -1,21 +1,26 @@
 
 lootTables = [ # add a loot table to add items to
     "minecraft:empty",
+    "minecraft:chests/bastion_treasure",
 ]
 
 insertTables = [ # add the loot tables that will be added to the loot table with the same index
     [ "minecraft:chests/buried_treasure", "minecraft:blocks/activator_rail" ],
+    [ "minecraft:chests/buried_treasure", "minecraft:chests/end_city_treasure" ],
 ]
 
-yourNamespace = "test" # the namespace the insersion functions can be found under
+yourNamespace = "test" # the namespace the insersion functions can be found under for compatibilty reasons
 
 #> Add gold scoreboard
 
-function gold:load:
+function gold:_technical/load:
     scoreboard objectives add gold dummy
+    store result score .rseed gold run seed
+    scoreboard players set .rmod gold 1234567
+    scoreboard players set .2 gold 2
 
-function_tag minecraft:load: # change to append [...] load:load [...] if using lantern load
-    { "values": [ "gold:load" ] }
+function_tag minecraft:load: # change to `append [...] load:load:` if using lantern load
+    { "values": [ "gold:_technical/load" ] }
 
 #> Logic
 
@@ -54,7 +59,7 @@ for idx, lootTable in enumerate(lootTables):
         function f'#gold:{noNamespace}' # let every pack populate the chest
         data modify storage gold:container Items set from block ~ ~ ~ Items
         store result score .slotAmount gold run data remove storage gold:container Items[].Slot # remove slot and store item amount in .slotAmound gold
-        function gold:shuffle
+        function gold:_technical/shuffle
         scoreboard players set .dist gold 0
 
     function f'{yourNamespace}:{noNamespace}_insert':
@@ -64,5 +69,45 @@ for idx, lootTable in enumerate(lootTables):
     function_tag f'gold:{noNamespace}':
         { "values": [ f'{yourNamespace}:{noNamespace}_insert' ]}
 
-function gold:shuffle: # needs .slotAmount gold to be set
-    data remove block ~ ~ ~ Items
+#> Shuffle
+
+function gold:_technical/shuffle:
+    data modify storage gold:container Items set from block ~ ~ ~ Items
+    store result score .stacks gold run data remove block ~ ~ ~ Items[]
+    scoreboard players set .occupied gold 0
+    if block ~ ~ ~ #gold:nine_slots run function gold:_technical/add_item_9
+    unless block ~ ~ ~ #gold:nine_slots run function gold:_technical/add_item_27
+
+for amount in [ 9, 27 ]:
+    function f'gold:_technical/add_item_{amount}':
+        scoreboard players remove .stacks gold 1
+
+        scoreboard players set .r.in gold f'{amount}'
+        function gold:_technical/random
+
+        for n in range(amount):
+            nthPow = 2 ** n
+            if score .r.out gold matches f'{n}' run scoreboard players add .occupied gold f'{nthPow}'
+
+        store result storage gold:container Items[-1].Slot int 1 run scoreboard players get .r.out gold
+        data modify block ~ ~ ~ Items append from storage gold:container Items[-1]
+        data remove storage gold:container Items[-1]
+
+        if score .stacks gold matches 1.. run function f'gold:_technical/add_item_{amount}'
+
+function gold:_technical/random: # random number from 0 to .r.in - 1 on r.out
+    # generate random number % input
+    scoreboard players operation .rseed gold *= .rmod gold
+    scoreboard players operation .rseed gold += .rmod gold
+    scoreboard players operation .r.out gold = .rseed gold
+    scoreboard players operation .r.out gold %= .r.in gold
+    # check if it exists - reroll if that is the case
+    scoreboard players set .exists gold 0
+    scoreboard players set .power gold 67108864 # 2 ^ 26
+    for n in range(27):
+        if score .exists gold matches 0 run scoreboard players operation .temp gold = .occupied gold
+        if score .exists gold matches 0 run scoreboard players operation .occupied gold %= .power gold
+        if score .exists gold matches 0 run scoreboard players operation .power gold /= .2 gold
+        if score .r.out gold matches f'{26 - n}' unless score .occupied gold = .temp gold run scoreboard players set .exists gold 1
+    if score .exists gold matches 1 run function gold:_technical/random
+
