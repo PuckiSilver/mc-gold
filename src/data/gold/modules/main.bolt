@@ -19,7 +19,7 @@ function gold:_technical/load:
     scoreboard players set .rmod gold 1234567
     scoreboard players set .2 gold 2
 
-function_tag minecraft:load: # change to `append [...] load:load:` if using lantern load
+function_tag minecraft:load: # change to `append function_tag load:load:` if using lantern load
     { "values": [ "gold:_technical/load" ] }
 
 #> Logic
@@ -56,6 +56,9 @@ for idx, lootTable in enumerate(lootTables):
         if score .dist gold matches 1.. positioned ^ ^ ^0.2 run function f'gold:{noNamespace}_raycast'
 
     function f'gold:{noNamespace}_insert':
+    
+        # TODO: find way to stack items from og loot table
+
         function f'#gold:{noNamespace}' # let every pack populate the chest
         data modify storage gold:container Items set from block ~ ~ ~ Items
         store result score .slotAmount gold run data remove storage gold:container Items[].Slot # remove slot and store item amount in .slotAmound gold
