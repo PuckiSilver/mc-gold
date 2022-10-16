@@ -1,0 +1,68 @@
+
+lootTables = [ # add a loot table to add items to
+    "minecraft:empty",
+]
+
+insertTables = [ # add the loot tables that will be added to the loot table with the same index
+    [ "minecraft:chests/buried_treasure", "minecraft:blocks/activator_rail" ],
+]
+
+yourNamespace = "test" # the namespace the insersion functions can be found under
+
+#> Add gold scoreboard
+
+function gold:load:
+    scoreboard objectives add gold dummy
+
+function_tag minecraft:load: # change to append [...] load:load [...] if using lantern load
+    { "values": [ "gold:load" ] }
+
+#> Logic
+
+for idx, lootTable in enumerate(lootTables):
+    noNamespace = lootTable.split(":")[1]
+
+    advancement f'gold:{noNamespace}':
+        {
+            "criteria": {
+                "requirement": {
+                "trigger": "minecraft:player_generates_container_loot",
+                "conditions": {
+                    "loot_table": f'{lootTable}'
+                }
+                }
+            },
+            "rewards": {
+                "function": f'gold:{noNamespace}'
+            }
+        }
+
+    function f'gold:{noNamespace}':
+        advancement revoke @s only f'gold:{noNamespace}'
+
+        scoreboard players set .dist gold 30
+        anchored eyes positioned ^ ^ ^0.2 run function f'gold:{noNamespace}_raycast'
+
+    function f'gold:{noNamespace}_raycast':
+        scoreboard players remove .dist gold 1
+
+        if block ~ ~ ~ #gold:container run function f'gold:{noNamespace}_insert'
+
+        if score .dist gold matches 1.. positioned ^ ^ ^0.2 run function f'gold:{noNamespace}_raycast'
+
+    function f'gold:{noNamespace}_insert':
+        function f'#gold:{noNamespace}' # let every pack populate the chest
+        data modify storage gold:container Items set from block ~ ~ ~ Items
+        store result score .slotAmount gold run data remove storage gold:container Items[].Slot # remove slot and store item amount in .slotAmound gold
+        function gold:shuffle
+        scoreboard players set .dist gold 0
+
+    function f'{yourNamespace}:{noNamespace}_insert':
+        for insert in insertTables[idx]:
+            loot insert ~ ~ ~ loot f'{insert}'
+
+    function_tag f'gold:{noNamespace}':
+        { "values": [ f'{yourNamespace}:{noNamespace}_insert' ]}
+
+function gold:shuffle: # needs .slotAmount gold to be set
+    data remove block ~ ~ ~ Items
