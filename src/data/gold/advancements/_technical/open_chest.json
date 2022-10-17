@@ -5,16 +5,11 @@
       "conditions": {
         "player": [
           {
-            "condition": "minecraft:value_check",
-            "value": {
-              "type": "minecraft:score",
-              "target": {
-                "type": "minecraft:fixed",
-                "name": ".shuffle"
-              },
-              "score": "config.gold"
-            },
-            "range": 2
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "nbt": "{Tags:[\"gold.startRay\"]}"
+            }
           }
         ],
         "location": {
