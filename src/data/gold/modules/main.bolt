@@ -15,9 +15,12 @@ yourNamespace = "test" # the namespace the insersion functions can be found unde
 
 function gold:_technical/load:
     scoreboard objectives add gold dummy
-    store result score .rseed gold run seed
+    unless score .rseed gold = .rseed gold store result score .rseed gold run seed
     scoreboard players set .rmod gold 1234567
     scoreboard players set .2 gold 2
+
+    scoreboard objectives add config.gold dummy
+    unless score .shuffle config.gold = .shuffle config.gold run scoreboard players set .shuffle config.gold 2 # 1 shuffles all but original || 2 summons marker and shuffles all
 
 function_tag minecraft:load: # change to `append function_tag load:load:` if using lantern load
     { "values": [ "gold:_technical/load" ] }
@@ -25,9 +28,10 @@ function_tag minecraft:load: # change to `append function_tag load:load:` if usi
 #> Logic
 
 for idx, lootTable in enumerate(lootTables):
-    noNamespace = lootTable.split(":")[1]
+    withSlash = lootTable.replace(":", "/")
+    withDot = withSlash.replace("/", ".")
 
-    advancement f'gold:{noNamespace}':
+    advancement f'gold:{withSlash}':
         {
             "criteria": {
                 "requirement": {
@@ -38,39 +42,55 @@ for idx, lootTable in enumerate(lootTables):
                 }
             },
             "rewards": {
-                "function": f'gold:{noNamespace}'
+                "function": f'gold:{withSlash}'
             }
         }
 
-    function f'gold:{noNamespace}':
-        advancement revoke @s only f'gold:{noNamespace}'
+    function f'gold:{withSlash}':
+        advancement revoke @s only f'gold:{withSlash}'
 
         scoreboard players set .dist gold 30
-        anchored eyes positioned ^ ^ ^0.2 run function f'gold:{noNamespace}_raycast'
+        anchored eyes positioned ^ ^ ^0.2 run function f'gold:{withSlash}_raycast'
 
-    function f'gold:{noNamespace}_raycast':
+    function f'gold:{withSlash}_raycast':
         scoreboard players remove .dist gold 1
 
-        if block ~ ~ ~ #gold:container run function f'gold:{noNamespace}_insert'
+        unless score .shuffle config.gold matches 2 if block ~ ~ ~ #gold:container run function f'gold:{withSlash}_insert'
+        if score .shuffle config.gold matches 2 if block ~ ~ ~ #gold:container run summon marker ~ ~ ~ {Tags:[f'{withDot}', "gold.shuffle"]}
+        if score .shuffle config.gold matches 2 if block ~ ~ ~ #gold:container run scoreboard players set .dist gold 0
 
-        if score .dist gold matches 1.. positioned ^ ^ ^0.2 run function f'gold:{noNamespace}_raycast'
+        if score .dist gold matches 1.. positioned ^ ^ ^0.2 run function f'gold:{withSlash}_raycast'
 
-    function f'gold:{noNamespace}_insert':
-    
-        # TODO: find way to stack items from og loot table
-
-        function f'#gold:{noNamespace}' # let every pack populate the chest
-        data modify storage gold:container Items set from block ~ ~ ~ Items
-        store result score .slotAmount gold run data remove storage gold:container Items[].Slot # remove slot and store item amount in .slotAmound gold
-        function gold:_technical/shuffle
+    function f'gold:{withSlash}_insert':
+        function f'#gold:{withSlash}' # let every pack populate the chest
+        if score .shuffle config.gold matches 1..2 run function gold:_technical/shuffle
         scoreboard players set .dist gold 0
 
-    function f'{yourNamespace}:{noNamespace}_insert':
+    function f'{yourNamespace}:gold/{withSlash}_insert':
         for insert in insertTables[idx]:
             loot insert ~ ~ ~ loot f'{insert}'
 
-    function_tag f'gold:{noNamespace}':
-        { "values": [ f'{yourNamespace}:{noNamespace}_insert' ]}
+    function_tag f'gold:{withSlash}':
+        { "values": [ f'{yourNamespace}:gold/{withSlash}_insert' ]}
+
+#> Delay Shuffle
+
+function gold:_technical/open_chest:
+    advancement revoke @s only gold:_technical/open_chest
+    execute as @e[type=marker, tag=gold.shuffle, limit=1] at @s function gold:_technical/open_chest_marker
+
+function gold:_technical/open_chest_marker:
+    data remove block ~ ~ ~ Items
+    for lootTable in lootTables:
+        withSlash = lootTable.replace(":", "/")
+        withDot = withSlash.replace("/", ".")
+        if entity @s[tag=f'{withDot}'] run loot insert ~ ~ ~ loot f'{lootTable}'
+        if entity @s[tag=f'{withDot}'] run function f'gold:{withSlash}_insert'
+    kill
+
+
+
+
 
 #> Shuffle
 
