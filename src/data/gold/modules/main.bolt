@@ -11,17 +11,17 @@ insertTables = [ # add the loot tables that will be added to the loot table with
 
 yourNamespace = "test" # the namespace the insersion functions can be found under for compatibilty reasons
 
-#> Add gold scoreboard
+#> Add and set up Scoreboards
 
 function gold:_technical/load:
-    scoreboard objectives add gold dummy
-    unless score .rseed gold = .rseed gold store result score .rseed gold run seed
-    scoreboard players set .rmod gold 1234567
-    scoreboard players set .2 gold 2
+    scoreboard objectives add gold dummy # scoreboard for everything technical
+    unless score .rseed gold = .rseed gold store result score .rseed gold run seed # if unset, get world seed as randomizer seed
+    scoreboard players set .rmod gold 1234567 # constant
+    scoreboard players set .2 gold 2 # constant
 
-    scoreboard objectives add config.gold dummy
+    scoreboard objectives add config.gold dummy # scoreboard to configue the pack at runtime
     unless score .shuffle config.gold = .shuffle config.gold run scoreboard players set .shuffle config.gold 2 # 1 shuffles all but original || 2 summons marker and shuffles all
-
+    unless score .strict config.gold = .strict config.gold run scoreboard players set .strict config.gold 0 # 1 check container for correct loot; more accurate but less efficient
 function_tag minecraft:load: # change to `append function_tag load:load:` if using lantern load
     { "values": [ "gold:_technical/load" ] }
 
@@ -31,7 +31,7 @@ for idx, lootTable in enumerate(lootTables):
     withSlash = lootTable.replace(":", "/")
     withDot = withSlash.replace("/", ".")
 
-    advancement f'gold:{withSlash}':
+    advancement f'gold:{withSlash}': # call function when loot gets generated
         {
             "criteria": {
                 "requirement": {
@@ -46,40 +46,41 @@ for idx, lootTable in enumerate(lootTables):
             }
         }
 
-    function f'gold:{withSlash}':
+    function f'gold:{withSlash}': # this function gets called when loot gets generated
         advancement revoke @s only f'gold:{withSlash}'
 
         scoreboard players set .dist gold 30
-        anchored eyes positioned ^ ^ ^0.2 run function f'gold:{withSlash}_raycast'
+        anchored eyes positioned ^ ^ ^0.2 run function f'gold:{withSlash}_raycast' # find chest
 
-    function f'gold:{withSlash}_raycast':
+    function f'gold:{withSlash}_raycast': # raycast and insert at end of raycast
         scoreboard players remove .dist gold 1
 
-        unless score .shuffle config.gold matches 2 if block ~ ~ ~ #gold:container run function f'gold:{withSlash}_insert'
-        if score .shuffle config.gold matches 2 if block ~ ~ ~ #gold:container run summon marker ~ ~ ~ {Tags:[f'{withDot}', "gold.shuffle"]}
-        if score .shuffle config.gold matches 2 if block ~ ~ ~ #gold:container run scoreboard players set .dist gold 0
+        unless score .strict config.gold matches 1 if block ~ ~ ~ #gold:container run function f'gold:{withSlash}_insert' # call specific function when goal was found
+        if score .strict config.gold matches 1 if block ~ ~ ~ #gold:container if data block ~ ~ ~ {LootTable:f'{lootTable}'} run function f'gold:{withSlash}_insert'
+        # if score .shuffle config.gold matches 2 if block ~ ~ ~ #gold:container run summon marker ~ ~ ~ {Tags:[f'{withDot}', "gold.shuffle"]}
+        # if score .shuffle config.gold matches 2 if block ~ ~ ~ #gold:container run scoreboard players set .dist gold 0
 
         if score .dist gold matches 1.. positioned ^ ^ ^0.2 run function f'gold:{withSlash}_raycast'
 
-    function f'gold:{withSlash}_insert':
+    function f'gold:{withSlash}_insert': # insert items into the chest, this is called at the location of the chest
         function f'#gold:{withSlash}' # let every pack populate the chest
-        if score .shuffle config.gold matches 1..2 run function gold:_technical/shuffle
+        if score .shuffle config.gold matches 1..2 run function gold:_technical/shuffle # shuffle items depending on config
         scoreboard players set .dist gold 0
 
-    function f'{yourNamespace}:gold/{withSlash}_insert':
+    function f'{yourNamespace}:gold/{withSlash}_insert': # every pack inserts its loot itself for compatibility reasons
         for insert in insertTables[idx]:
             loot insert ~ ~ ~ loot f'{insert}'
 
-    function_tag f'gold:{withSlash}':
+    function_tag f'gold:{withSlash}': # register your packs function into the initial loot table
         { "values": [ f'{yourNamespace}:gold/{withSlash}_insert' ]}
 
 #> Delay Shuffle
 
-function gold:_technical/open_chest:
+function gold:_technical/open_chest: # gets called when opening a chest (and shuffling is at 2)
     advancement revoke @s only gold:_technical/open_chest
     execute as @e[type=marker, tag=gold.shuffle, limit=1] at @s function gold:_technical/open_chest_marker
 
-function gold:_technical/open_chest_marker:
+function gold:_technical/open_chest_marker: # the marker tries to insert into the chest
     data remove block ~ ~ ~ Items
     for lootTable in lootTables:
         withSlash = lootTable.replace(":", "/")
@@ -88,37 +89,31 @@ function gold:_technical/open_chest_marker:
         if entity @s[tag=f'{withDot}'] run function f'gold:{withSlash}_insert'
     kill
 
-
-
-
-
 #> Shuffle
 
-function gold:_technical/shuffle:
-    data modify storage gold:container Items set from block ~ ~ ~ Items
-    store result score .stacks gold run data remove block ~ ~ ~ Items[]
+function gold:_technical/shuffle: # function to shuffle all the chests contents
+    data modify storage gold:container Items set from block ~ ~ ~ Items # modify items in storage for efficiency
+    store result score .stacks gold run data remove block ~ ~ ~ Items[] # get stack amount and remove items from physical chest
     scoreboard players set .occupied gold 0
-    if block ~ ~ ~ #gold:nine_slots run function gold:_technical/add_item_9
-    unless block ~ ~ ~ #gold:nine_slots run function gold:_technical/add_item_27
+    scoreboard players set .r.in gold 27
+    function gold:_technical/add_item_27
 
-for amount in [ 9, 27 ]:
-    function f'gold:_technical/add_item_{amount}':
-        scoreboard players remove .stacks gold 1
+function gold:_technical/add_item_27: # store occupied slots in integer as bit; add item back into physical chest; recursively
+    scoreboard players remove .stacks gold 1
 
-        scoreboard players set .r.in gold f'{amount}'
-        function gold:_technical/random
+    function gold:_technical/random # produce random unused slot
 
-        for n in range(amount):
-            nthPow = 2 ** n
-            if score .r.out gold matches f'{n}' run scoreboard players add .occupied gold f'{nthPow}'
+    for n in range(amount):
+        nthPow = 2 ** n
+        if score .r.out gold matches f'{n}' run scoreboard players add .occupied gold f'{nthPow}' # random number gets stored as 2^amount
 
-        store result storage gold:container Items[-1].Slot int 1 run scoreboard players get .r.out gold
-        data modify block ~ ~ ~ Items append from storage gold:container Items[-1]
-        data remove storage gold:container Items[-1]
+    store result storage gold:container Items[-1].Slot int 1 run scoreboard players get .r.out gold
+    data modify block ~ ~ ~ Items append from storage gold:container Items[-1]
+    data remove storage gold:container Items[-1]
 
-        if score .stacks gold matches 1.. run function f'gold:_technical/add_item_{amount}'
+    if score .stacks gold matches 1.. run function gold:_technical/add_item_27
 
-function gold:_technical/random: # random number from 0 to .r.in - 1 on r.out
+function gold:_technical/random: # random number from 0 to .r.in - 1 on r.out that is not occupied yet
     # generate random number % input
     scoreboard players operation .rseed gold *= .rmod gold
     scoreboard players operation .rseed gold += .rmod gold
@@ -127,7 +122,7 @@ function gold:_technical/random: # random number from 0 to .r.in - 1 on r.out
     # check if it exists - reroll if that is the case
     scoreboard players set .exists gold 0
     scoreboard players set .power gold 67108864 # 2 ^ 26
-    for n in range(27):
+    for n in range(27): # read occupied slots by reading bits
         if score .exists gold matches 0 run scoreboard players operation .temp gold = .occupied gold
         if score .exists gold matches 0 run scoreboard players operation .occupied gold %= .power gold
         if score .exists gold matches 0 run scoreboard players operation .power gold /= .2 gold
