@@ -1,9 +1,12 @@
 # **mc-gold**
 With this project you can add loot to other loot tables without overwriting them.
 
+
 ## **Overview**
-This pack **only works if a player is opening the container**, so breaking the container or placing a hopper underneath it only gives items of the original loot table.
-Loot will be inserted into **both chest types, barrels and all shulker boxes**.
+This beet project gives you the opportunity to add to foreign loot tables without modifying them in any way.
+
+A full data pack gets generated, that can directly be merged with your own project and your pack automatically will be compatible with all other packs using gold!
+
 
 ## **Configure**
 At the top of the [main.bolt](src/data/gold/modules/main.bolt) file, you can see the global variables `lootTables`, `insertTables` and `yourNamespace`.
@@ -25,9 +28,42 @@ In this example the loot tables `myCoolPack:artifact` and `myCoolPack:weapon` wi
 
 The pack also uses the specified `myCoolPack` namespace to insert the loot
 
-## **Technical Stuff**
-Why do I see other Items flashing when opening a chest?
-- The pack has to wait for the loot table to generate before modifying the chests contents
+## **How it Works**
+
+1. The pack checks when a **player opens a loot table** that should be modified.
+    - For this a `player_generates_container_loot` loot table per unique loot table, that should be modified, is used.
+
+2. When the pack detect a loot table that should be modified, it **adds two tags** to the player.
+    - A **tag to identify**, that the player should check for a container and
+    - The **name and namespace of the loot table** that should be replaced
+
+3. Next an `item_used_on_block` advancement is used to check for the player **opening a chest while having the identifier tag**.
+    - This executes right after the other advancement, but still in the same tick.
+    - The next steps have to happen a little after the first advancement, because at that time, the chest content has not been generated yet.
+    This leeds to items overwriting other items and other jank.
+
+4. A **raycast** is used to locate the chest.
+
+5. The **content of the chest gets removed**.
+    - This is done, to stack the items of the original loot table as with this, there can be a lot more different items in the chest.
+
+6. The original loot table and all additional **loot tables get inserted into the chest**.
+    - The original loot table gets determined by the tag of the player and
+    - Additional loot tables get inserted through a tag calling a function in the packs own namespace. This is done, to allow multiple packs to modify the same original loot table.
+
+7. Lastly, all the chest content gets **shuffled**.
+    - If the contents are not shuffled, all the loot would be in order of insertion.
+    - This also insures the items to be spread in the chest, even if not all slots are filled.
+
+## **Known Limitations**
+This pack only works if a **player is opening the container**, so breaking the container or placing a hopper underneath it only gives items of the original loot table.
+
+Loot will (only) be inserted into **both chest types, barrels and all shulker boxes**.
+
+Once the chest is full, **additional loot tables won't be inserted**. So some loot may not generate if too many loot tables are added using this method.
 
 ## **Dependencies**
 This project uses [beet](https://github.com/mcbeet/beet), [bolt](https://github.com/mcbeet/bolt) and [mecha](https://github.com/mcbeet/mecha).
+
+---
+<sub>check me out on [Planet Minecraft](https://www.planetminecraft.com/member/puckisilver/)
