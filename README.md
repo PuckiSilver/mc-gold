@@ -5,28 +5,42 @@ With this project you can add loot to other loot tables without overwriting them
 ## **Overview**
 This beet project gives you the opportunity to add to foreign loot tables without modifying them in any way.
 
-A full data pack gets generated, that can directly be merged with your own project and your pack automatically will be compatible with all other packs using gold!
+A full data pack gets generated, that can directly be merged with your own project and your pack automatically will be compatible with all other packs using mc-gold!
 
 
 ## **Configure**
-At the top of the [main.bolt](src/data/gold/modules/main.bolt) file, you can see the global variables `lootTables`, `insertTables` and `yourNamespace`.
-Fill these in with your details.
-```python
-lootTables = [ # add a loot table to add items to
-    "minecraft:chests/simple_dungeon",
-    "minecraft:chests/bastion_treasure",
-]
+1. At the top of the [main.bolt](src/data/gold/modules/main.bolt) file, you can see the variables `lootTables`, `insertTables` and `yourNamespace`.
+Adjust, remove and add to these to achive your desired result.
 
-insertTables = [ # add the loot tables that will be added to the loot table with the same index
-    [ "myCoolPack:artifact", "myCoolPack:weapon" ],
-    [ "minecraft:chests/buried_treasure", "minecraft:blocks/diamond_block" ],
-]
+    The first loot table in the `lootTables` list corresponds to, and will generate, all the loot tables specified in the first row of the `insertTables` list.
 
-yourNamespace = "myCoolPack" # the namespace the insersion functions can be found under for compatibilty reasons
-```
-In this example the loot tables `myCoolPack:artifact` and `myCoolPack:weapon` will be added to normal dungeons using the `minecraft:chests/simple_dungeon` loot table and the `minecraft:chests/buried_treasure` and `minecraft:blocks/diamond_block` loot tables can also be found in chests using the `minecraft:chests/bastion_treasure` loot table.
+    `yourNamespace` is the namespace of your own pack. This namespace is used for a single `.mcfunction` file to enable compatibility between different data packs using mc-gold.
 
-The pack also uses the specified `myCoolPack` namespace to insert the loot
+    ```python
+    lootTables = [ # add a loot table to add items to
+        "minecraft:chests/simple_dungeon",
+        "minecraft:chests/bastion_treasure",
+    ]
+
+    insertTables = [ # add the loot tables that will be added to the loot table with    the same index
+        [ "myCoolPack:artifact", "myCoolPack:weapon" ],
+        [ "minecraft:chests/buried_treasure", "minecraft:blocks/diamond_block" ],
+    ]
+
+    yourNamespace = "myCoolPack" # the namespace the insersion functions can be     found under for compatibilty reasons
+    ```
+
+    - In this example the loot tables `myCoolPack:artifact` and `myCoolPack:weapon` will be added to normal dungeons using the `minecraft:chests/simple_dungeon` loot table
+    - And the `minecraft:chests/buried_treasure` and `minecraft:blocks/diamond_block` loot tables can also be found in chests using the `minecraft:chests/bastion_treasure` loot table.<br><br>
+
+2. Once these variables are configured, **build the project** using [beet](https://github.com/mcbeet/beet).
+
+3. After that, you should **copy the the folder** `gold` from `/build/mc-gold/data/` into the `.../data/` folder of your data pack.
+
+4. You also have to **copy the folder** `gold` from `/buid/mc-gold/data/<yourNamespace>/functions/` into your pack to `.../data/<yourNamespace>/functions/`.
+
+5. Lastly you must run the `gold:_technical/load` function when **loading your pack**.
+This can be done by adding it as a new line into your `.../data/minecraft/tags/functions/load.json` file.
 
 ## **How it Works**
 
