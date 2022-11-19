@@ -3,6 +3,11 @@
     "requirement": {
       "trigger": "minecraft:item_used_on_block",
       "conditions": {
+        "location": {
+          "block": {
+            "tag": "gold:container"
+          }
+        },
         "player": [
           {
             "condition": "minecraft:entity_properties",
@@ -11,14 +16,7 @@
               "nbt": "{Tags:[\"gold.startRay\"]}"
             }
           }
-        ],
-        "location": {
-          "block": {
-            "blocks": [
-              "minecraft:chest"
-            ]
-          }
-        }
+        ]
       }
     }
   },
