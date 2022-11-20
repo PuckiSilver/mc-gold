@@ -47,7 +47,7 @@ This can be done by adding it as a new line into your `.../data/minecraft/tags/f
 1. The pack checks when a **player opens a loot table** that should be modified.
     - For this a `player_generates_container_loot` loot table per unique loot table, that should be modified, is used.
 
-2. When the pack detect a loot table that should be modified, it **adds two tags** to the player.
+2. When the pack detects a loot table that should be modified, it **adds two tags** to the player.
     - A **tag to identify**, that the player should check for a container and
     - The **name and namespace of the loot table** that should be replaced
 
